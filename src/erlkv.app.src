@@ -1,0 +1,16 @@
+{application, erlkv, [
+	{description, "ERlang Key-Value storage."},
+	{vsn, "0.1.0"},
+	{modules, []},
+	{registered, [erlkv_sup]},
+	{applications, [
+		kernel,
+		stdlib,
+		cowboy,
+		sync,
+		crypto,
+		lager
+	]},
+	{mod, {erlkv_app, []}},
+	{env, []}
+]}.
