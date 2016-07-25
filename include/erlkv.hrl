@@ -1,3 +1,3 @@
--record(item, {key, value}).
--record(ttl, {key, ttl}).
+-record(erlkv_item, {key, value}).
+-record(erlkv_ttl, {key, ttl}).
 
