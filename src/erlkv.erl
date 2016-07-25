@@ -10,6 +10,7 @@
 %% API.
 
 start() ->
+	mnesia:create_schema([node()]),
 	ok = application:start(compiler),
 	ok = application:start(syntax_tools),
 	ok = application:start(sync),
@@ -22,7 +23,9 @@ start() ->
 	ok = application:start(gproc),
 	ok = application:start(uuid),
 	ok = application:start(mnesia),
-	ok = application:start(erlkv)
+	ok = application:start(erlkv),
+	db:start_link(),
+	db:create_schema()
 .
 
 stop() ->
