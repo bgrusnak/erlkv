@@ -15,4 +15,6 @@ content_types_provided(Req, State) ->
 
 
 top_text(Req, State) ->
-	{<<"">>, Req, State}.
+	Items=db:items_list(),
+	Ret=lists:foldl(fun(X,A) -> A ++ [X,<<"\n">>] end, [], Items),
+	{Ret, Req, State}.

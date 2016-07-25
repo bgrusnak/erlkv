@@ -69,7 +69,7 @@ handle_call({ is_item_exists, Item }, _From, State) ->
 	
 
 handle_call({ add_item, Item, Values }, _From, State) ->
-	Value=proplists:get_value(<<"data">>, Values, null),
+	Value=proplists:get_value(<<"value">>, Values, null),
 	TTL=proplists:get_value(<<"ttl">>, Values, null),
 	case TTL of
 		null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
