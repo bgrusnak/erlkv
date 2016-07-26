@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([items_list/0, is_item_exists/1, add_item/2, get_item/1, delete_item/1, create_schema/0, delete_outdated/1]).
+-export([items_list/0, is_item_exists/1, add_item/2, get_item/1, get_ttl/1, delete_item/1, create_schema/0, delete_outdated/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 start_link() ->
@@ -18,6 +18,9 @@ items_list(Item) ->
 
 get_item(Item) ->
   gen_server:call({global, ?MODULE}, {get_item, Item}).
+  
+get_ttl(Item) ->
+  gen_server:call({global, ?MODULE}, {get_ttl, Item}).
   
 is_item_exists(Item) ->
   gen_server:call({global, ?MODULE}, {is_item_exists, Item}).
@@ -47,6 +50,18 @@ handle_call({ items_list }, _From, State) ->
 handle_call({ get_item, Item }, _From, State) ->
 	Reply=try
 		case mnesia_utile:find_by_id(erlkv_item, Item) of
+			no_rows -> {error, not_found};
+			not_found -> {error, not_found};
+			Res -> {ok, Res}
+		end
+	catch _:_ ->
+		{error, bad_db}
+	end,
+	{ reply, Reply, State };
+
+handle_call({ get_ttl, Item }, _From, State) ->
+	Reply=try
+		case mnesia_utile:find_by_id(erlkv_ttl, Item) of
 			no_rows -> {error, not_found};
 			not_found -> {error, not_found};
 			Res -> {ok, Res}
