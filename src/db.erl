@@ -1,5 +1,8 @@
 -module(db).
 -include("erlkv.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
+
+
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -47,9 +50,10 @@ handle_call({ items_list }, _From, State) ->
 					#erlkv_ttl{key=Key, ttl=TTL}
 			end
 		),
-		case mnesia_utile:match(erlkv_ttl, Match) of
+		Outdated = mnesia_utile:match(erlkv_ttl, Match),
+		case Outdated of
 			not_found -> ok;
-			Outdated ->
+			_ ->
 				lists:foreach(fun(X) -> 
 					mnesia_utile:remove(erlkv_item, X#erlkv_ttl.key),
 					mnesia_utile:remove(erlkv_ttl, X#erlkv_ttl.key)
@@ -128,7 +132,7 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 	Value=proplists:get_value(<<"value">>, Values, null),
 	TTL=proplists:get_value(<<"ttl">>, Values, null),
 	Trans = fun() ->      
-		AD=mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
+		mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
 		case TTL of
 			null -> ok;
 			<<"">> -> ok;
