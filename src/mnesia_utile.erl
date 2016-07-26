@@ -24,6 +24,7 @@
 -export([remove/2]).
 %% added by I.A.Shlyakhovoy
 -export(match/2).
+-export(match/3).
 
 
 %%%===================================================================
@@ -50,6 +51,18 @@ match(Table,Match)->
 		{atomic, Results} -> Results
 		_ -> not_found;
 	end.
+	
+%% finds specific N records from table using a match
+-spec match(atom(),match_spec(), integer()) -> list() |  not_found.
+match(Table,Match, Count)->
+	F = fun() ->
+		mnesia:select(Table, Match, Count, read)
+	end,
+	case mnesia:transaction(F) of
+		{atomic, Results} -> Results
+		_ -> not_found;
+	end.
+
 
 %% finds a record by it id from a table
 -spec find_by_id(atom(),any()) -> tuple() |  not_found.
