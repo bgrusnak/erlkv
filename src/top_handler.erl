@@ -15,6 +15,8 @@ content_types_provided(Req, State) ->
 
 
 top_text(Req, State) ->
-	Items=db:items_list(),
-	Ret=lists:foldl(fun(X,A) -> A ++ [X,<<"\n">>] end, [], Items),
+	Ret=case db:items_list() of
+		{error, Val} -> Val;
+		Items -> lists:foldl(fun(X,A) -> A ++ [X,<<"\n">>] end, [], Items)
+	end,
 	{Ret, Req, State}.
