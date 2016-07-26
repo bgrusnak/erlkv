@@ -96,18 +96,15 @@ handle_call({ is_item_exists, Item }, _From, State) ->
 		Outdated= case mnesia_utile:find_by_id(erlkv_ttl, Item) of
 			no_rows -> false;
 			not_found -> false;
-			Live -> (Live#erlkv_ttl.ttl<Now)
+			Live -> case Live#erlkv_ttl.ttl<Now of
+				true -> db:delete_item(Item), true;
+				false -> false
+			end
 		end,
 		case mnesia_utile:find_by_id(erlkv_item, Item) of
 			no_rows -> false;
 			not_found -> false;
-			Found -> 
-				case Outdated of
-					true -> 
-						db:delete_item(Item),
-						false;
-					_ -> true
-				end
+			_ -> true
 		end
 	catch _:_ ->
 		false
