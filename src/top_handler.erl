@@ -1,5 +1,5 @@
 -module(top_handler).
-
+-include("erlkv.hrl").
 -export([init/3]).
 -export([content_types_provided/2]).
 -export([top_text/2]).

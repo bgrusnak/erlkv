@@ -1,5 +1,5 @@
 -module(resource_handler).
-
+-include("erlkv.hrl").
 %% Standard callbacks.
 -export([init/3]).
 -export([allowed_methods/2]).
