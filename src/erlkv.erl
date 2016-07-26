@@ -25,7 +25,8 @@ start() ->
 	ok = application:start(mnesia),
 	ok = application:start(erlkv),
 	db:start_link(),
-	db:create_schema()
+	db:create_schema(),
+	io:format("App started~n")
 .
 
 stop() ->
