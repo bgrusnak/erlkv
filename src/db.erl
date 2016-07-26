@@ -36,6 +36,24 @@ add_item(Item, Value) ->
   
 
 handle_call({ items_list }, _From, State) ->
+	Trans = fun() ->      
+		Now=now_sec(),
+		Match = ets:fun2ms(
+			fun(#erlkv_ttl{key=Key, ttl=TTL})
+				when TTL < Now ->
+					#erlkv_ttl{key=Key, ttl=TTL}
+			end
+		),
+		case mnesia_utile:match(erlkv_ttl, Match) of
+			not_found -> ok;
+			Outdated ->
+				lists:foreach(fun(X) -> 
+					mnesia_utile:remove(erlkv_item, X#erlkv_ttl.key),
+					mnesia_utile:remove(erlkv_ttl, X#erlkv_ttl.key)
+				end, Outdated)
+		end
+	end,
+	mnesia:transaction(Trans),
 	Reply=try
 		case mnesia_utile:all(erlkv_item) of
 			no_rows -> {error, not_found};
@@ -73,14 +91,26 @@ handle_call({ get_ttl, Item }, _From, State) ->
 
 
 handle_call({ is_item_exists, Item }, _From, State) ->
+	Now=now_sec(),
 	Reply=try
+		Outdated= case mnesia_utile:find_by_id(erlkv_ttl, Item) of
+			no_rows -> false;
+			not_found -> false;
+			Live -> (Live#erlkv_ttl.ttl<Now)
+		end,
 		case mnesia_utile:find_by_id(erlkv_item, Item) of
 			no_rows -> false;
 			not_found -> false;
-			_ -> true
+			Found -> 
+				case Outdated of
+					true -> 
+						db:delete_item(Item),
+						false;
+					_ -> true
+				end
 		end
 	catch _:_ ->
-		true
+		false
 	end,
 	{ reply, Reply, State };
 	
@@ -91,8 +121,8 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 	Trans = fun() ->      
        case TTL of
 			null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
-			_ -> mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
-				Timeout=calendar:datetime_to_gregorian_seconds( calendar:universal_time())+ binary_to_integer(TTL),
+			_ -> Timeout=now_sec()+ binary_to_integer(TTL),
+				mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
 				mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout});
 		end
     end,
@@ -114,7 +144,7 @@ handle_call({ delete_item, Item }, _From, State) ->
 	
 handle_call({ delete_outdated, Count }, _From, State) ->
 	Trans = fun() ->      
-		Now=calendar:datetime_to_gregorian_seconds( calendar:universal_time()),
+		Now=now_sec(),
 		Match = ets:fun2ms(
 			fun(#erlkv_ttl{key=Key, ttl=TTL})
 				when TTL < Now ->
@@ -152,3 +182,7 @@ handle_cast(_Message, State) -> { noreply, State }.
 handle_info(_Message, State) -> { noreply, State }.
 terminate(_Reason, _State) -> ok.
 code_change(_OldVersion, State, _Extra) -> { ok, State }.
+
+%% private
+
+now_sec() -> calendar:datetime_to_gregorian_seconds( calendar:universal_time()) .
