@@ -98,8 +98,11 @@ handle_call({ delete_item, Item }, _From, State) ->
 
 
 handle_call({create_schema }, _From, State) ->
-	mnesia:create_table(erlkv_item, [{attributes, record_info(fields, erlkv_item)},{disc_copies,[node()]}]),
-	mnesia:create_table(erlkv_ttl, [{attributes, record_info(fields, erlkv_ttl)},{disc_copies,[node()]}]),
+	Trans = fun() ->      
+		mnesia:create_table(erlkv_item, [{attributes, record_info(fields, erlkv_item)},{disc_copies,[node()]}]),
+		mnesia:create_table(erlkv_ttl, [{attributes, record_info(fields, erlkv_ttl)},{disc_copies,[node()]}])
+	end,
+	mnesia:transaction(Trans),
 	{ reply, ok, State };
 
 handle_cast(_Message, State) -> { noreply, State }.
