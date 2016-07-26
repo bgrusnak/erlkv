@@ -128,10 +128,11 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 	Value=proplists:get_value(<<"value">>, Values, null),
 	TTL=proplists:get_value(<<"ttl">>, Values, null),
 	Trans = fun() ->      
+		mnesia_utile:store(#erlkv_item{key= Item, value=Value});
        case TTL of
-			null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
+			null -> ok;
+			<<"">> -> ok;
 			_ -> Timeout=now_sec()+ binary_to_integer(TTL),
-				mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
 				mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout})
 		end
     end,
