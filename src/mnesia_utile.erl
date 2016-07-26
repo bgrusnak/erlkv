@@ -1,4 +1,5 @@
 %% Copyright (c) 2016, Gregor Meyenberg  <gregor@meyenberg.de>
+%% Copyright (c) 2016, Ilya A. Shlyakhovoy <ilya_cat@mail.ru>
 %% 
 %% Permission to use, copy, modify, and/or distribute this software for any
 %% purpose with or without fee is hereby granted, provided that the above
@@ -21,7 +22,8 @@
 -export([all/1]).
 -export([store/1]).
 -export([remove/2]).
-
+%% added by I.A.Shlyakhovoy
+-export(match/2).
 
 
 %%%===================================================================
@@ -36,6 +38,17 @@ find(Table,Filter)->
 								Filter(X)]))  of
 		[] -> not_found;
 		Results -> Results
+	end.
+
+%% finds specific records from table using a match
+-spec match(atom(),match_spec()) -> list() |  not_found.
+match(Table,Match)->
+	F = fun() ->
+		mnesia:select(Table, Match)
+	end,
+	case mnesia:transaction(F) of
+		{atomic, Results} -> Results
+		_ -> not_found;
 	end.
 
 %% finds a record by it id from a table
