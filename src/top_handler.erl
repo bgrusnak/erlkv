@@ -17,6 +17,6 @@ content_types_provided(Req, State) ->
 top_text(Req, State) ->
 	Ret=case db:items_list() of
 		{error, Val} -> Val;
-		Items -> lists:foldl(fun(X,A) -> A ++ [X,<<"\n">>] end, [], Items)
+		Items -> lists:foldl(fun(X,A) -> A ++ [X#erlkv_item.key,<<"\n">>] end, [], Items)
 	end,
 	{Ret, Req, State}.
