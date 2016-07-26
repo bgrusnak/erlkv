@@ -82,7 +82,7 @@ handle_call({ get_ttl, Item }, _From, State) ->
 		case mnesia_utile:find_by_id(erlkv_ttl, Item) of
 			no_rows -> {error, not_found};
 			not_found -> {error, not_found};
-			Res -> {ok, Res}
+			Res -> {ok, Res#erlkv_ttl.ttl}
 		end
 	catch _:_ ->
 		{error, bad_db}
