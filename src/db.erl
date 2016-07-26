@@ -64,7 +64,7 @@ handle_call({ items_list }, _From, State) ->
 			Res -> {ok, lists:map(fun(X) -> X#erlkv_item.key end, Res) }
 		end
 	catch _:_ ->
-		{error, bad_db}
+		{error, not_found}
 	end,
 	{ reply, Reply, State };
 
