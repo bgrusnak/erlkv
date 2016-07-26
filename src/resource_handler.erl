@@ -4,54 +4,41 @@
 -export([init/3]).
 -export([allowed_methods/2]).
 -export([content_types_provided/2]).
--export([content_types_accepted/2]).
--export([resource_exists/2]).
--export([delete_resource/2]).
 
-%% Custom callbacks.
--export([pass_rest/2]).
 
-init(_Transport, _Req, []) ->
-	{upgrade, protocol, cowboy_rest}.
 
+
+init(_Transport, Req, []) ->
+	case cowboy_req:method(Req) of
+		{<<"DELETE">>, _} ->
+			handle_delete(Req1);
+		{<<"GET">>, Req1} ->
+			handle_get(Req1)
+	end.
+     
 allowed_methods(Req, State) ->
 	{[ <<"GET">>, <<"DELETE">>], Req, State}.
 
-content_types_provided(Req, State) ->
-	{[
-		{{<<"text">>, <<"plain">>, []}, pass_rest}
-	], Req, State}.
-
-content_types_accepted(Req, State) ->
-	{[{{<<"application">>, <<"x-www-form-urlencoded">>, []}, create_res}],
-		Req, State}.
-
-delete_resource(Req, State) ->
+handle_delete(Req) ->
 	case cowboy_req:binding(res_id, Req) of
 		{undefined, Req2} ->
-			{false, Req2, State};
+			cowboy_req:reply(404, [{<<"content-type">>, <<"text/plain">>}], "not found", Req);
 		{ReqId, Req2} ->
-			db:delete_item(ReqId),
-			{true, Req2, State}
+			Rt=case db:delete_item(ReqId) of
+				ok -> cowboy_req:reply(410, [{<<"content-type">>, <<"text/plain">>}], "deleted", Req);
+				_ -> cowboy_req:reply(404, [{<<"content-type">>, <<"text/plain">>}], "error", Req)
+			end,
+			{Rt, Req2, null}
 	end.
 
-resource_exists(Req, _State) ->
-	case cowboy_req:binding(res_id, Req) of
-		{undefined, Req2} ->
-			{false, Req2, index};
-		{ReqId, Req2} ->
-			{db:is_item_exists(ReqId), Req2, ReqId}
-	end.
-
-
-pass_rest(Req, _State) ->
+handle_get(Req) ->
 	case cowboy_req:binding(res_id, Req) of
 		{undefined, Req2} ->
 			{false, Req2, index};
 		{ReqId, Req2} ->
 			Rt=case db:get_item(ReqId) of
-				{error, not_found} -> false;
-				{ok, Res} -> Res
+				{error, not_found} -> cowboy_req:reply(404, [{<<"content-type">>, <<"text/plain">>}], "not found", Req);
+				{ok, Res} -> cowboy_req:reply(200, [{<<"content-type">>, <<"text/plain">>}], Res#erlkv_item.value, Req) 
 			end,
-			{Rt, Req2, ReqId}
+			{Rt, Req2, null}
 	end.
