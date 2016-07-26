@@ -23,8 +23,7 @@
 -export([store/1]).
 -export([remove/2]).
 %% added by I.A.Shlyakhovoy
--export(match/2).
--export(match/3).
+-export([match/2, match/3]).
 
 
 %%%===================================================================
@@ -42,25 +41,25 @@ find(Table,Filter)->
 	end.
 
 %% finds specific records from table using a match
--spec match(atom(),match_spec()) -> list() |  not_found.
+-spec match(atom(),list()) -> list() |  not_found.
 match(Table,Match)->
 	F = fun() ->
 		mnesia:select(Table, Match)
 	end,
 	case mnesia:transaction(F) of
-		{atomic, Results} -> Results
-		_ -> not_found;
+		{atomic, Results} -> Results;
+		_ -> not_found
 	end.
 	
 %% finds specific N records from table using a match
--spec match(atom(),match_spec(), integer()) -> list() |  not_found.
+-spec match(atom(), list(), integer()) -> list() |  not_found.
 match(Table,Match, Count)->
 	F = fun() ->
 		mnesia:select(Table, Match, Count, read)
 	end,
 	case mnesia:transaction(F) of
-		{atomic, Results} -> Results
-		_ -> not_found;
+		{atomic, Results} -> Results;
+		_ -> not_found
 	end.
 
 

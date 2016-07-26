@@ -20,7 +20,7 @@ allowed_methods(Req, State) ->
 
 content_types_provided(Req, State) ->
 	{[
-		{{<<"text">>, <<"plain">>, []}, pass_rest},
+		{{<<"text">>, <<"plain">>, []}, pass_rest}
 	], Req, State}.
 
 content_types_accepted(Req, State) ->

@@ -13,7 +13,7 @@ start_link() ->
 init(_Args) ->
     {ok, []}.
     
-items_list(Item) ->
+items_list() ->
   gen_server:call({global, ?MODULE}, {items_list}).
 
 get_item(Item) ->
@@ -33,6 +33,9 @@ delete_outdated(Count) ->
   
 add_item(Item, Value) ->
   gen_server:call({global, ?MODULE}, {add_item, Item, Value}).
+  
+create_schema() ->
+  gen_server:call({global, ?MODULE}, {create_schema}).
   
 
 handle_call({ items_list }, _From, State) ->
@@ -58,7 +61,7 @@ handle_call({ items_list }, _From, State) ->
 		case mnesia_utile:all(erlkv_item) of
 			no_rows -> {error, not_found};
 			not_found -> {error, not_found};
-			Res -> {ok, lists:map(fun(X) -> X#erlkv.key end, Res) }
+			Res -> {ok, lists:map(fun(X) -> X#erlkv_item.key end, Res) }
 		end
 	catch _:_ ->
 		{error, bad_db}
@@ -66,6 +69,7 @@ handle_call({ items_list }, _From, State) ->
 	{ reply, Reply, State };
 
 handle_call({ get_item, Item }, _From, State) ->
+	Now=now_sec(),
 	Reply=try
 		case mnesia_utile:find_by_id(erlkv_ttl, Item) of
 			no_rows -> false;
@@ -128,7 +132,7 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 			null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
 			_ -> Timeout=now_sec()+ binary_to_integer(TTL),
 				mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
-				mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout});
+				mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout})
 		end
     end,
     mnesia:transaction(Trans),
@@ -181,7 +185,7 @@ handle_call({create_schema }, _From, State) ->
 		mnesia:create_table(erlkv_ttl, [{attributes, record_info(fields, erlkv_ttl)},{disc_copies,[node()]}])
 	end,
 	mnesia:transaction(Trans),
-	{ reply, ok, State };
+	{ reply, ok, State }.
 
 handle_cast(_Message, State) -> { noreply, State }.
 handle_info(_Message, State) -> { noreply, State }.
