@@ -30,5 +30,5 @@ start() ->
 .
 
 stop() ->
-	ok
+		mnesia:stop()
 .

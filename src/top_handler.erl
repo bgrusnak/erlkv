@@ -11,10 +11,11 @@ init(_Transport, _Req, []) ->
 	{upgrade, protocol, cowboy_rest}.
 
 allowed_methods(Req, State) ->
-	{[ <<"GET">>, <<"PUT">>, <<"POST">>], Req, State}.
+	{[ <<"GET">>, <<"POST">>], Req, State}.
 
 content_types_provided(Req, State) ->
 	{[
+		{<<"text/html">>, top_text},
 		{<<"text/plain">>, top_text}
 	], Req, State}.
 
@@ -26,31 +27,20 @@ content_types_accepted(Req, State) ->
 top_text(Req, State) ->
 	Ret=case db:items_list() of
 		{error, Val} -> list_to_binary(io_lib:format("~p",[{error, Val}]));
-		Items -> lists:foldl(fun(X,A) -> A ++ [X#erlkv_item.key,<<"\n">>] end, [], Items)
+		{ok, []} -> <<"">>;
+		{ok, [First|Items]} -> lists:foldl(fun(X,A) -> A ++  [<<"\n">>,X] end, [First], Items)
 	end,
 	{Ret, Req, State}.
 
 create_res(Req, State) ->
 	{Method, Req2} = cowboy_req:method(Req),
 	HasBody = cowboy_req:has_body(Req),
-io:format("has body~p~n", [HasBody]),
-	{ok, Req3} = maybe_create(Method, HasBody, Req2),
-	{ok, Req3, State}.
-
-
-maybe_create(<<"PUT">>, HasBody, Req) ->
-	maybe_create(<<"POST">>, HasBody, Req)
-;
-
-maybe_create(<<"POST">>, true, Req) ->
-	{ok, PostVals, Req2} = cowboy_req:body_qs(Req),
-	Key = proplists:get_value(<<"key">>, PostVals),
-	Created=db:add_item(Key, PostVals),
-io:format("Created ~p~n", [Created]),	
-	{ok, Req2};
-	
-maybe_create(<<"POST">>, false, Req) ->
-	cowboy_req:reply(400, [], <<"Missing body.">>, Req);
-maybe_create(_, _, Req) ->
-	%% Method not allowed.
-	cowboy_req:reply(405, Req).
+	Rt= case {Method, HasBody} of
+		{<<"POST">>, true} ->
+			{ok, PostVals, Req3} = cowboy_req:body_qs(Req2),
+			Key = proplists:get_value(<<"key">>, PostVals),
+			Created=db:add_item(Key, PostVals),
+			true;
+		_ -> false
+	end,
+	{Rt, Req, State}.

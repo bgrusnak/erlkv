@@ -64,7 +64,7 @@ handle_call({ items_list }, _From, State) ->
 			Res -> {ok, lists:map(fun(X) -> X#erlkv_item.key end, Res) }
 		end
 	catch _:_ ->
-		{error, not_found}
+		{error, bad_db}
 	end,
 	{ reply, Reply, State };
 
@@ -128,8 +128,8 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 	Value=proplists:get_value(<<"value">>, Values, null),
 	TTL=proplists:get_value(<<"ttl">>, Values, null),
 	Trans = fun() ->      
-		mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
-       case TTL of
+		AD=mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
+		case TTL of
 			null -> ok;
 			<<"">> -> ok;
 			_ -> Timeout=now_sec()+ binary_to_integer(TTL),
@@ -181,11 +181,8 @@ handle_call({ delete_outdated, Count }, _From, State) ->
 
 
 handle_call({create_schema }, _From, State) ->
-	Trans = fun() ->      
-		mnesia:create_table(erlkv_item, [{attributes, record_info(fields, erlkv_item)},{disc_copies,[node()]}]),
-		mnesia:create_table(erlkv_ttl, [{attributes, record_info(fields, erlkv_ttl)},{disc_copies,[node()]}])
-	end,
-	mnesia:transaction(Trans),
+	mnesia:create_table(erlkv_item, [{attributes, record_info(fields, erlkv_item)},{disc_copies,[node()]}]),
+	mnesia:create_table(erlkv_ttl, [{attributes, record_info(fields, erlkv_ttl)},{disc_copies,[node()]}]),
 	{ reply, ok, State }.
 
 handle_cast(_Message, State) -> { noreply, State }.
