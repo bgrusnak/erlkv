@@ -67,6 +67,14 @@ handle_call({ items_list }, _From, State) ->
 
 handle_call({ get_item, Item }, _From, State) ->
 	Reply=try
+		case mnesia_utile:find_by_id(erlkv_ttl, Item) of
+			no_rows -> false;
+			not_found -> false;
+			Live -> case Live#erlkv_ttl.ttl<Now of
+				true -> db:delete_item(Item), true;
+				false -> false
+			end
+		end,
 		case mnesia_utile:find_by_id(erlkv_item, Item) of
 			no_rows -> {error, not_found};
 			not_found -> {error, not_found};
@@ -93,7 +101,7 @@ handle_call({ get_ttl, Item }, _From, State) ->
 handle_call({ is_item_exists, Item }, _From, State) ->
 	Now=now_sec(),
 	Reply=try
-		Outdated= case mnesia_utile:find_by_id(erlkv_ttl, Item) of
+		case mnesia_utile:find_by_id(erlkv_ttl, Item) of
 			no_rows -> false;
 			not_found -> false;
 			Live -> case Live#erlkv_ttl.ttl<Now of
