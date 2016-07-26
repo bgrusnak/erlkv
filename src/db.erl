@@ -74,7 +74,8 @@ handle_call({ add_item, Item, Values }, _From, State) ->
 	case TTL of
 		null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
 		_ -> mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
-			mnesia_utile:store(#erlkv_ttl{key= Item, ttl=TTL});
+			Timeout=calendar:datetime_to_gregorian_seconds( calendar:universal_time())+ binary_to_integer(TTL),
+			mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout});
 	end,
 	{ reply, ok, State };
 
