@@ -9,14 +9,13 @@
 -export([delete_resource/2]).
 
 %% Custom callbacks.
--export([create_res/2]).
 -export([pass_rest/2]).
 
 init(_Transport, _Req, []) ->
 	{upgrade, protocol, cowboy_rest}.
 
 allowed_methods(Req, State) ->
-	{[ <<"GET">>, <<"PUT">>, <<"DELETE">>, <<"POST">>], Req, State}.
+	{[ <<"GET">>, <<"DELETE">>], Req, State}.
 
 content_types_provided(Req, State) ->
 	{[
@@ -30,10 +29,10 @@ content_types_accepted(Req, State) ->
 delete_resource(Req, State) ->
 	case cowboy_req:binding(res_id, Req) of
 		{undefined, Req2} ->
-			{true, Req2, index};
+			{false, Req2, State};
 		{ReqId, Req2} ->
 			db:delete_item(ReqId),
-			{true, Req2, ReqId}
+			{true, Req2, State}
 	end.
 
 resource_exists(Req, _State) ->
@@ -43,29 +42,6 @@ resource_exists(Req, _State) ->
 		{ReqId, Req2} ->
 			{db:is_item_exists(ReqId), Req2, ReqId}
 	end.
-
-create_res(Req, State) ->
-	{Method, Req2} = cowboy_req:method(Req),
-	HasBody = cowboy_req:has_body(Req),
-	{ok, Req3} = maybe_create(Method, HasBody, Req2),
-	{ok, Req3, State}.
-
-
-maybe_create(<<"PUT">>, HasBody, Req) ->
-	maybe_create(<<"POST">>, HasBody, Req)
-;
-
-maybe_create(<<"POST">>, true, Req) ->
-	{ok, PostVals, Req2} = cowboy_req:body_qs(Req),
-	Key = proplists:get_value(<<"key">>, PostVals),
-	db:add_item(Key, PostVals),
-	{ok, Req2};
-	
-maybe_create(<<"POST">>, false, Req) ->
-	cowboy_req:reply(400, [], <<"Missing body.">>, Req);
-maybe_create(_, _, Req) ->
-	%% Method not allowed.
-	cowboy_req:reply(405, Req).
 
 
 pass_rest(Req, _State) ->
