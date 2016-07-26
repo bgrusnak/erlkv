@@ -71,18 +71,24 @@ handle_call({ is_item_exists, Item }, _From, State) ->
 handle_call({ add_item, Item, Values }, _From, State) ->
 	Value=proplists:get_value(<<"value">>, Values, null),
 	TTL=proplists:get_value(<<"ttl">>, Values, null),
-	case TTL of
-		null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
-		_ -> mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
-			Timeout=calendar:datetime_to_gregorian_seconds( calendar:universal_time())+ binary_to_integer(TTL),
-			mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout});
-	end,
+	Trans = fun() ->      
+       case TTL of
+			null -> mnesia_utile:store(#erlkv_item{key= Item, value=Value});
+			_ -> mnesia_utile:store(#erlkv_item{key= Item, value=Value}),
+				Timeout=calendar:datetime_to_gregorian_seconds( calendar:universal_time())+ binary_to_integer(TTL),
+				mnesia_utile:store(#erlkv_ttl{key= Item, ttl=Timeout});
+		end
+    end,
+    mnesia:transaction(Trans),
 	{ reply, ok, State };
 
 handle_call({ delete_item, Item }, _From, State) ->
-	Reply=try
+	Trans = fun() ->      
 		mnesia_utile:remove(erlkv_item, Item),
-		mnesia_utile:remove(erlkv_ttl, Item),
+		mnesia_utile:remove(erlkv_ttl, Item)
+	end,
+	Reply=try
+		 mnesia:transaction(Trans),
 		ok
 	catch _:_ ->
 		{error, bad_data}
