@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([items_list/0, is_item_exists/1, add_item/2, get_item/1, delete_item/1, create_schema/0]).
+-export([items_list/0, is_item_exists/1, add_item/2, get_item/1, delete_item/1, create_schema/0, delete_outdated/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 start_link() ->
@@ -24,6 +24,9 @@ is_item_exists(Item) ->
   
 delete_item(Item) ->
   gen_server:call({global, ?MODULE}, {delete_item, Item}).
+  
+delete_outdated(Count) ->
+  gen_server:call({global, ?MODULE}, {delete_outdated, Count}).
   
 add_item(Item, Value) ->
   gen_server:call({global, ?MODULE}, {add_item, Item, Value}).
@@ -85,6 +88,32 @@ handle_call({ delete_item, Item }, _From, State) ->
 	Trans = fun() ->      
 		mnesia_utile:remove(erlkv_item, Item),
 		mnesia_utile:remove(erlkv_ttl, Item)
+	end,
+	Reply=try
+		 mnesia:transaction(Trans),
+		ok
+	catch _:_ ->
+		{error, bad_data}
+	end,
+	{ reply, Reply, State };
+	
+handle_call({ delete_outdated, Count }, _From, State) ->
+	Trans = fun() ->      
+		Now=calendar:datetime_to_gregorian_seconds( calendar:universal_time()),
+		Match = ets:fun2ms(
+			fun(#erlkv_ttl{key=Key, ttl=TTL})
+				when TTL < Now ->
+					#erlkv_ttl{key=Key, ttl=TTL}
+			end
+		),
+		case mnesia_utile:match(erlkv_ttl, Match, Count) of
+			not_found -> ok;
+			Outdated ->
+				lists:foreach(fun(X) -> 
+					mnesia_utile:remove(erlkv_item, X#erlkv_ttl.key),
+					mnesia_utile:remove(erlkv_ttl, X#erlkv_ttl.key)
+				end, Outdated)
+		end
 	end,
 	Reply=try
 		 mnesia:transaction(Trans),
