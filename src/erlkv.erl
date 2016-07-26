@@ -5,7 +5,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% API.
--export([start/0, install/0, stop/0]).
+-export([start/0, stop/0]).
 
 %% API.
 
