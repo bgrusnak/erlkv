@@ -20,7 +20,6 @@ start() ->
 	ok = application:start(cowboy),
 	ok = application:start(goldrush),
 	ok = application:start(lager),
-	ok = application:start(gproc),
 	ok = application:start(uuid),
 	ok = application:start(mnesia),
 	ok = application:start(erlkv),
